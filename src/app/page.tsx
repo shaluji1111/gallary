@@ -42,28 +42,34 @@ export default function HomePage() {
     return (
       <main className="lock-screen">
         <div className="lock-card">
-          <div className="lock-ornament">💍</div>
+          <span className="lock-ornament">💍</span>
           <h1 className="lock-title">Sourav &amp; Family</h1>
-          <p className="lock-subtitle">A Wedding to Remember</p>
+          <p className="lock-subtitle">Wedding Gallery</p>
           <div className="lock-divider" />
+          
           <form onSubmit={handleSubmit}>
-            <label className="lock-label" htmlFor="password">Gallery Password</label>
-            <input
-              id="password"
-              className="lock-input"
-              type="password"
-              placeholder="Enter password"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              autoFocus
-              autoComplete="off"
-            />
+            <div className="lock-input-group">
+              <label className="lock-label" htmlFor="password">Access Code</label>
+              <input
+                id="password"
+                className="lock-input"
+                type="password"
+                placeholder="••••••"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                autoFocus
+                autoComplete="off"
+              />
+            </div>
+            
             <button className="lock-btn" type="submit">
-              View Gallery →
+              Unlock Memories
             </button>
+            
             {error && <p className="lock-error">{error}</p>}
           </form>
-          <p className="lock-hint">Access restricted to family &amp; friends</p>
+          
+          <p className="lock-hint">Private access for friends and family</p>
         </div>
       </main>
     );

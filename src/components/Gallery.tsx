@@ -133,13 +133,12 @@ export default function Gallery({ onLockOut }: GalleryProps) {
               />
               <div className="masonry-overlay">
                 <div className="masonry-actions">
-                  <span className="masonry-action-btn" title="View">🔍</span>
                   <a
                     className="masonry-action-btn"
                     href={cloudUrl(photo.public_id, 1920)}
                     download={photo.file}
                     onClick={e => e.stopPropagation()}
-                    title="Download"
+                    title="Download Original"
                   >
                     ⬇
                   </a>
