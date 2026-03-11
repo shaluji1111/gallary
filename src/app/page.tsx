@@ -3,26 +3,44 @@ import { useState, useEffect, useCallback } from 'react';
 import Gallery from '@/components/Gallery';
 
 const CORRECT_PASSWORD = process.env.NEXT_PUBLIC_GALLERY_PASSWORD || 'shalu';
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || `${CORRECT_PASSWORD}-admin`;
 const STORAGE_KEY = 'gallery_auth';
+const ADMIN_STORAGE_KEY = 'gallery_admin';
 
 export default function HomePage() {
   const [authed, setAuthed] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === 'true') setAuthed(true);
+      const storedAuth = localStorage.getItem(STORAGE_KEY);
+      const storedAdmin = localStorage.getItem(ADMIN_STORAGE_KEY);
+      if (storedAdmin === 'true') {
+        setIsAdmin(true);
+        setAuthed(true);
+      } else if (storedAuth === 'true') {
+        setAuthed(true);
+      }
     }
     setChecking(false);
   }, []);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    if (input.toLowerCase().trim() === CORRECT_PASSWORD.toLowerCase().trim()) {
+    const val = input.trim();
+    if (val === ADMIN_PASSWORD) {
+      localStorage.setItem(ADMIN_STORAGE_KEY, 'true');
       localStorage.setItem(STORAGE_KEY, 'true');
+      setIsAdmin(true);
+      setAuthed(true);
+      setError('');
+    } else if (val.toLowerCase() === CORRECT_PASSWORD.toLowerCase()) {
+      localStorage.setItem(STORAGE_KEY, 'true');
+      localStorage.setItem(ADMIN_STORAGE_KEY, 'false');
+      setIsAdmin(false);
       setAuthed(true);
       setError('');
     } else {
@@ -33,7 +51,9 @@ export default function HomePage() {
 
   const handleLockOut = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(ADMIN_STORAGE_KEY);
     setAuthed(false);
+    setIsAdmin(false);
   }, []);
 
   if (checking) return null;
@@ -75,5 +95,5 @@ export default function HomePage() {
     );
   }
 
-  return <Gallery onLockOut={handleLockOut} />;
+  return <Gallery onLockOut={handleLockOut} isAdmin={isAdmin} />;
 }
