@@ -8,8 +8,16 @@ interface Photo {
   url: string;
 }
 
+interface FaceGroup {
+  id: number;
+  name: string;
+  thumbnail: string;
+  photos: string[];
+}
+
 interface GalleryProps {
   onLockOut: () => void;
+  isAdmin?: boolean;
 }
 
 const PAGE_SIZE = 40;
@@ -19,26 +27,32 @@ function cloudUrl(publicId: string, width: number) {
   return `https://res.cloudinary.com/${CLOUD}/image/upload/q_auto,f_auto,w_${width}/${publicId}.jpg`;
 }
 
-export default function Gallery({ onLockOut }: GalleryProps) {
+export default function Gallery({ onLockOut, isAdmin = false }: GalleryProps) {
   const [allPhotos, setAllPhotos] = useState<Photo[]>([]);
-  const [activeFolder, setActiveFolder] = useState<'01' | '02'>('01');
+  const [faces, setFaces] = useState<FaceGroup[]>([]);
+  const [activeFolder, setActiveFolder] = useState<'01' | '02' | 'faces'>('01');
+  const [selectedFace, setSelectedFace] = useState<FaceGroup | null>(null);
   const [page, setPage] = useState(1);
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/manifest.json')
-      .then(r => r.json())
-      .then((data: Photo[]) => {
-        setAllPhotos(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch('/manifest.json').then(r => r.json()),
+      fetch('/faces.json').then(r => r.json()).catch(() => [])
+    ]).then(([photosData, facesData]) => {
+      setAllPhotos(photosData);
+      setFaces(facesData);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
-  const folderPhotos = allPhotos.filter(p => p.folder === activeFolder);
-  const visible = folderPhotos.slice(0, page * PAGE_SIZE);
-  const hasMore = visible.length < folderPhotos.length;
+  const filteredPhotos = activeFolder === 'faces' && selectedFace
+    ? allPhotos.filter(p => selectedFace.photos.includes(p.public_id))
+    : allPhotos.filter(p => p.folder === activeFolder);
+
+  const visible = filteredPhotos.slice(0, page * PAGE_SIZE);
+  const hasMore = visible.length < filteredPhotos.length;
 
   const openLightbox = useCallback((idx: number) => setLightboxIdx(idx), []);
   const closeLightbox = useCallback(() => setLightboxIdx(null), []);
@@ -62,10 +76,35 @@ export default function Gallery({ onLockOut }: GalleryProps) {
     return () => window.removeEventListener('keydown', handler);
   }, [lightboxIdx, goPrev, goNext, closeLightbox]);
 
-  const handleFolderSwitch = (folder: '01' | '02') => {
+  const handleFolderSwitch = (folder: '01' | '02' | 'faces') => {
     setActiveFolder(folder);
+    if (folder === 'faces' && faces.length > 0 && !selectedFace) {
+      setSelectedFace(faces[0]);
+    } else if (folder !== 'faces') {
+      setSelectedFace(null);
+    }
     setPage(1);
     setLightboxIdx(null);
+  };
+
+  const handleFaceSelect = (face: FaceGroup) => {
+    setSelectedFace(face);
+    setPage(1);
+    setLightboxIdx(null);
+  };
+
+  const handleNameChange = (faceId: number, newName: string) => {
+    setFaces(prev => prev.map(f => f.id === faceId ? { ...f, name: newName } : f));
+  };
+
+  const exportFaces = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(faces, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "faces.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
   };
 
   const tab01Count = allPhotos.filter(p => p.folder === '01').length;
@@ -105,11 +144,56 @@ export default function Gallery({ onLockOut }: GalleryProps) {
         >
           Session 02 · {tab02Count}
         </button>
+        {faces.length > 0 && (
+          <button
+            className={`gallery-tab${activeFolder === 'faces' ? ' active' : ''}`}
+            onClick={() => handleFolderSwitch('faces')}
+          >
+            Find by Face · {faces.length}
+          </button>
+        )}
       </div>
+
+      {/* Face Filter Bar */}
+      {activeFolder === 'faces' && faces.length > 0 && (
+        <div className="face-filter-container">
+          <div className="face-filter-scroll">
+            {faces.map(face => (
+              <div
+                key={face.id}
+                className={`face-item${selectedFace?.id === face.id ? ' active' : ''}`}
+                onClick={() => handleFaceSelect(face)}
+              >
+                <div className="face-thumb-wrapper">
+                  <img src={face.thumbnail} alt={face.name} className="face-thumb" />
+                </div>
+                {isAdmin ? (
+                  <input
+                    className="face-name-input"
+                    value={face.name}
+                    onChange={e => handleNameChange(face.id, e.target.value)}
+                    onClick={e => e.stopPropagation()}
+                  />
+                ) : (
+                  <span className="face-name">{face.name}</span>
+                )}
+              </div>
+            ))}
+          </div>
+          {isAdmin && (
+            <div className="admin-actions">
+              <button className="admin-export-btn" onClick={exportFaces}>
+                💾 Export Updated Faces
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Photo count */}
       <p className="photo-count">
-        Showing {Math.min(visible.length, folderPhotos.length)} of {folderPhotos.length} photos
+        Showing {Math.min(visible.length, filteredPhotos.length)} of {filteredPhotos.length} photos
+        {selectedFace && ` for ${selectedFace.name}`}
       </p>
 
       {/* Loading */}
