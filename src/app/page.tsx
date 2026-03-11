@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Gallery from '@/components/Gallery';
 
 const CORRECT_PASSWORD = process.env.NEXT_PUBLIC_GALLERY_PASSWORD || 'shalu';
-const ADMIN_PASSWORD = `${CORRECT_PASSWORD}-admin`;
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || `${CORRECT_PASSWORD}-admin`;
 const STORAGE_KEY = 'gallery_auth';
 const ADMIN_STORAGE_KEY = 'gallery_admin';
 
